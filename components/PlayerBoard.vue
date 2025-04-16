@@ -1,4 +1,5 @@
 <!-- Игровые поля -->
+
 <template>
   <div class="player-boards">
     <!-- Собственное поле игрока -->
@@ -17,7 +18,6 @@
             :class="getOwnCellClass(cell, rowIndex, colIndex)"
             :style="getShipStyle(rowIndex, colIndex)"
           >
-            <!-- Отображение попаданий на своем поле -->
             <span v-if="cell === 2" class="hit-marker">✖</span>
             <span v-if="opponent.hits && opponent.hits[rowIndex][colIndex]" class="miss-marker">•</span>
           </div>
@@ -41,7 +41,6 @@
             :class="getAttackCellClass(rowIndex, colIndex)"
             @click="handleCellClick(rowIndex, colIndex)"
           >
-            <!-- Отображение результатов выстрелов -->
             <span v-if="player.hits && player.hits[rowIndex][colIndex]" class="hit-marker">✖</span>
             <span v-if="player.misses && player.misses[rowIndex][colIndex]" class="miss-marker">•</span>
           </div>
@@ -58,7 +57,7 @@ const props = defineProps({
 });
 
 const emit = defineEmits(['cell-click']);
-
+// Функции
 const getShipStyle = (row, col) => {
   if (props.player.board[row][col] === 1) {
     return { 
@@ -68,7 +67,7 @@ const getShipStyle = (row, col) => {
   }
   return {};
 };
-
+// Классы клеток
 const getOwnCellClass = (cell, row, col) => {
   return {
     'ship': cell === 1,
@@ -169,5 +168,11 @@ h3 {
   padding: 5px 10px;
   background: #f0f0f0;
   border-radius: 4px;
+}
+
+@media (max-width: 768px) {
+  .player-boards {
+    flex-direction: column;
+  }
 }
 </style>

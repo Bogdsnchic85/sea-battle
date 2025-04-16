@@ -12,50 +12,47 @@
       @click="selectShip(ship)"
     >
       <div class="ship-info">
-        <span class="ship-size">{{ ship.size }} палубный</span>
+        <span class="ship-size">{{ ship.size }}-палубный</span>
         <span class="ship-count">({{ ship.count - ship.placed }} из {{ ship.count }})</span>
       </div>
       <div 
         class="ship-preview"
-        :style="{ width: previewWidth(ship) }"
+        :style="{ 
+          width: previewWidth(ship),
+          backgroundColor: previewColor(ship)
+        }"
       ></div>
     </div>
   </div>
 </template>
 
-<script>
-import { computed } from 'vue';
-
-export default {
-  props: {
-    ships: {
-      type: Array,
-      required: true
-    }
-  },
-  emits: ['select-ship'],
-  setup(props, { emit }) {
-    const isSelected = (ship) => {
-      return ship.placed < ship.count;
-    };
-
-    const selectShip = (ship) => {
-      if (ship.placed < ship.count) {
-        emit('select-ship', { ...ship });
-      }
-    };
-
-    const previewWidth = (ship) => {
-      return `${ship.size * 20}px`;
-    };
-
-    return {
-      isSelected,
-      selectShip,
-      previewWidth
-    };
+<script setup>
+const props = defineProps({
+  ships: {
+    type: Array,
+    required: true
   }
-}
+});
+
+const emit = defineEmits(['select-ship']);
+
+const isSelected = (ship) => {
+  return ship.placed < ship.count;
+};
+
+const selectShip = (ship) => {
+  if (ship.placed < ship.count) {
+    emit('select-ship', { ...ship });
+  }
+};
+
+const previewWidth = (ship) => {
+  return `${ship.size * 20}px`;
+};
+
+const previewColor = (ship) => {
+  return ship.placed < ship.count ? '#555' : '#aaa';
+};
 </script>
 
 <style scoped>
@@ -63,6 +60,9 @@ export default {
   display: flex;
   flex-direction: column;
   gap: 15px;
+  padding: 15px;
+  background: #f8f8f8;
+  border-radius: 8px;
 }
 
 .ship-item {
@@ -91,11 +91,20 @@ export default {
   display: flex;
   justify-content: space-between;
   margin-bottom: 8px;
+  font-size: 0.9em;
+}
+
+.ship-size {
+  font-weight: bold;
+}
+
+.ship-count {
+  color: #666;
 }
 
 .ship-preview {
   height: 15px;
-  background-color: #555;
   border-radius: 3px;
+  transition: all 0.2s;
 }
 </style>

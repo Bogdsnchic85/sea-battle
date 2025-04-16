@@ -1,47 +1,27 @@
-<!-- Настройки игры -->
+<!-- Настройка игры -->
 
 <template>
   <div class="game-setup">
     <h1>⚙️ Настройка игры</h1>
     
     <div class="players-setup">
-      <!-- Настройка игрока 1 -->
       <div 
-        class="player-input" 
-        :style="{ borderColor: players[0].color }"
+        v-for="(player, index) in players" 
+        :key="index" 
+        class="player-input"
+        :style="{ borderColor: player.color }"
       >
-        <label>👤 Игрок 1:</label>
-        <input 
-          v-model="players[0].name" 
-          placeholder="Введите имя" 
+        <label>👤 Игрок {{ index + 1 }}:</label>
+        <input
+          v-model="player.name"
+          placeholder="Введите имя"
           class="pencil-input"
         />
         <div class="color-picker">
           <span>🎨 Цвет:</span>
-          <input 
-            type="color" 
-            v-model="players[0].color" 
-            class="color-input"
-          />
-        </div>
-      </div>
-      
-      <!-- Настройка игрока 2 -->
-      <div 
-        class="player-input" 
-        :style="{ borderColor: players[1].color }"
-      >
-        <label>👤 Игрок 2:</label>
-        <input 
-          v-model="players[1].name" 
-          placeholder="Введите имя" 
-          class="pencil-input"
-        />
-        <div class="color-picker">
-          <span>🎨 Цвет:</span>
-          <input 
-            type="color" 
-            v-model="players[1].color" 
+          <input
+            type="color"
+            v-model="player.color"
             class="color-input"
           />
         </div>
@@ -58,18 +38,19 @@
 import { ref } from 'vue';
 
 const emit = defineEmits(['game-start']);
-
+ //логика формы
 const players = ref([
-  { name: 'Игрок 1', color: '#3366ff' }, 
-  { name: 'Игрок 2', color: '#ff3333' }  
+  { name: 'Игрок 1', color: '#3366ff' },
+  { name: 'Игрок 2', color: '#ff3333' }
 ]);
 
+//передача данных
 const startGame = () => {
-  if (players.value[0].name.trim() === '' || players.value[1].name.trim() === '') {
+  if (players.value.some(p => p.name.trim() === '')) {
     alert('Пожалуйста, введите имена обоих игроков');
     return;
   }
-  emit('game-start', players.value);
+  emit('game-start', players.value.map(p => ({ ...p })));
 };
 </script>
 
@@ -79,7 +60,9 @@ const startGame = () => {
   padding: 30px;
   border-radius: 10px;
   box-shadow: 0 3px 10px rgba(0,0,0,0.1);
-  font-family: 'Schoolbell', cursive;
+  font-family: 'Arial', sans-serif;
+  max-width: 800px;
+  margin: 0 auto;
 }
 
 .players-setup {
@@ -101,8 +84,8 @@ const startGame = () => {
   padding: 8px;
   border: 1px solid #ccc;
   border-radius: 4px;
-  font-family: 'Schoolbell', cursive;
   font-size: 16px;
+  margin-top: 8px;
 }
 
 .color-picker {
@@ -129,11 +112,17 @@ const startGame = () => {
   font-size: 1.2em;
   cursor: pointer;
   transition: all 0.2s;
-  font-family: 'Schoolbell', cursive;
+  display: block;
+  margin: 0 auto;
 }
 
 .start-button:hover {
-  transform: scale(1.05);
-  box-shadow: 0 3px 10px rgba(0,0,0,0.2);
+  background: #388E3C;
+}
+
+@media (max-width: 768px) {
+  .players-setup {
+    grid-template-columns: 1fr;
+  }
 }
 </style>
