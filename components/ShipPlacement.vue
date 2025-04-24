@@ -1,20 +1,34 @@
-<!-- Расстановка кораблей -->
-
 <template>
   <div class="ship-placement">
     <h1>🚢 Расстановка кораблей: {{ player.name }}</h1>
     
+    <div v-if="showCustomAlert" class="custom-alert" :class="alertType">
+      {{ alertMessage }}
+    </div>
+    
     <div class="placement-container">
-      <ShipList 
-        :ships="player.ships" 
-        @select-ship="handleShipSelect"
-      />
+      <div class="ship-list-container">
+        <h3>Доступные корабли:</h3>
+        <div 
+          v-for="ship in player.ships" 
+          :key="ship.size" 
+          class="ship-item"
+          :class="{ 
+            'selected': selectedShip?.size === ship.size,
+            'disabled': ship.placed >= ship.count 
+          }"
+          @click="selectShip(ship)"
+        >
+          {{ ship.size }}-палубный ({{ ship.count - ship.placed }} из {{ ship.count }})
+          <div class="ship-preview" :style="previewStyle(ship)"></div>
+        </div>
+      </div>
       
       <div class="board-with-coordinates">
-        <div class="letters-row">
-          <div class="coordinate-cell"></div>
+        <div class="coordinates-row">
+          <div class="coordinate-cell spacer"></div>
           <div 
-            v-for="letter in letters" 
+            v-for="(letter, index) in letters" 
             :key="letter" 
             class="coordinate-cell letter"
           >
@@ -68,12 +82,25 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue';
-import ShipList from './ShipList.vue';
-
 const props = defineProps({
-  player: Object,
-  players: Array
+  player: {
+    type: Object,
+    required: true,
+    default: () => ({
+      name: 'Игрок',
+      ships: [
+        { size: 4, count: 1, placed: 0 },
+        { size: 3, count: 2, placed: 0 },
+        { size: 2, count: 3, placed: 0 },
+        { size: 1, count: 4, placed: 0 }
+      ],
+      board: Array(10).fill().map(() => Array(10).fill(0))
+    })
+  },
+  players: {
+    type: Array,
+    default: () => []
+  }
 });
 
 const emit = defineEmits(['ships-placed']);
@@ -84,6 +111,9 @@ const shipOrientation = ref('horizontal');
 const hoverPosition = ref({ row: -1, col: -1 });
 const selectedShipCells = ref([]);
 const isMovingShip = ref(false);
+const showCustomAlert = ref(false);
+const alertMessage = ref('');
+const alertType = ref('info');
 
 // Вычисляемые свойства
 const allShipsPlaced = computed(() => {
@@ -93,6 +123,21 @@ const allShipsPlaced = computed(() => {
 const isLastPlayer = computed(() => {
   return props.players.indexOf(props.player) === props.players.length - 1;
 });
+
+const previewStyle = (ship) => {
+  return {
+    width: shipOrientation.value === 'horizontal' ? `${ship.size * 15}px` : '15px',
+    height: shipOrientation.value === 'vertical' ? `${ship.size * 15}px` : '15px'
+  };
+};
+
+// Показ уведомления
+const showAlert = (message, type = 'info') => {
+  alertMessage.value = message;
+  alertType.value = type;
+  showCustomAlert.value = true;
+  setTimeout(() => showCustomAlert.value = false, 2000);
+};
 
 // Проверка клеток
 const isSelectedShipCell = (row, col) => {
@@ -134,13 +179,13 @@ const cannotPlaceHere = (row, col) => {
 };
 
 // Обработчики событий
-const handleShipSelect = (ship) => {
-  if (ship.placed >= ship.count) {
-    findAndSelectShip(ship.size);
-  } else {
+const selectShip = (ship) => {
+  if (ship.placed < ship.count) {
     selectedShip.value = ship;
     selectedShipCells.value = [];
     isMovingShip.value = false;
+  } else {
+    findAndSelectShip(ship.size);
   }
 };
 
@@ -164,6 +209,7 @@ const handleCellClick = (row, col) => {
       isMovingShip.value = false;
       selectedShipCells.value = [];
     } else {
+      showAlert('Нельзя разместить корабль здесь!', 'error');
       returnShipToOriginalPosition();
     }
   } else if (props.player.board[row][col] === 1) {
@@ -176,17 +222,23 @@ const handleCellClick = (row, col) => {
   } else if (selectedShip.value) {
     const shipSize = selectedShip.value.size;
     const orientation = shipOrientation.value;
-    placeShip(row, col, shipSize, orientation);
+    
+    if (canPlaceShip(row, col, shipSize, orientation)) {
+      placeShip(row, col, shipSize, orientation);
+    } else {
+      showAlert('Нельзя разместить корабль здесь!', 'error');
+    }
   }
 };
 
 const confirmPlacement = () => {
   if (allShipsPlaced.value) {
     emit('ships-placed');
+  } else {
+    showAlert('Разместите все корабли!', 'error');
   }
 };
 
-// Вспомогательные функции
 const findAndSelectShip = (size) => {
   for (let row = 0; row < 10; row++) {
     for (let col = 0; col < 10; col++) {
@@ -215,6 +267,13 @@ const removeShip = (cells) => {
 };
 
 const placeShip = (row, col, size, orientation) => {
+  // Проверка на возможность размещения
+  if (!canPlaceShip(row, col, size, orientation)) {
+    showAlert('Нельзя разместить корабль здесь!', 'error');
+    return false;
+  }
+
+  // Размещение корабля
   for (let i = 0; i < size; i++) {
     const r = orientation === 'horizontal' ? row : row + i;
     const c = orientation === 'horizontal' ? col + i : col;
@@ -226,7 +285,16 @@ const placeShip = (row, col, size, orientation) => {
   );
   props.player.ships[shipIndex].placed++;
   
-  selectedShip.value = null;
+  // Автовыбор следующего корабля того же типа (если есть еще)
+  if (props.player.ships[shipIndex].placed < props.player.ships[shipIndex].count && 
+      props.player.ships[shipIndex].count > 1) {
+    selectedShip.value = { ...props.player.ships[shipIndex] };
+  } else {
+    selectedShip.value = null;
+  }
+  
+  showAlert(`${size}-палубный корабль размещен`, 'success');
+  return true;
 };
 
 const findShipCells = (startRow, startCol) => {
@@ -256,12 +324,14 @@ const findShipCells = (startRow, startCol) => {
 };
 
 const canPlaceShip = (row, col, size, orientation) => {
+  // Проверка выхода за границы
   if (orientation === 'horizontal') {
     if (col + size > 10) return false;
   } else {
     if (row + size > 10) return false;
   }
   
+  // Проверка клеток и соседних клеток
   for (let i = -1; i <= size; i++) {
     for (let j = -1; j <= 1; j++) {
       let r, c;
@@ -274,6 +344,9 @@ const canPlaceShip = (row, col, size, orientation) => {
       }
       
       if (r >= 0 && r < 10 && c >= 0 && c < 10) {
+        // Игнорируем клетки перемещаемого корабля
+        if (isMovingShip.value && isSelectedShipCell(r, c)) continue;
+        
         if (props.player.board[r][c] !== 0) {
           return false;
         }
@@ -331,7 +404,35 @@ onUnmounted(() => {
   background: white;
   border-radius: 5px;
   box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-  font-family: 'Schoolbell', cursive;
+  font-family: 'Arial', sans-serif;
+}
+
+.custom-alert {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 12px 24px;
+  border-radius: 5px;
+  background: #4CAF50;
+  color: white;
+  z-index: 1000;
+  animation: fadeInOut 2s ease-in-out;
+}
+
+.custom-alert.error {
+  background: #f44336;
+}
+
+.custom-alert.info {
+  background: #2196F3;
+}
+
+@keyframes fadeInOut {
+  0% { opacity: 0; top: 0; }
+  10% { opacity: 1; top: 20px; }
+  90% { opacity: 1; top: 20px; }
+  100% { opacity: 0; top: 0; }
 }
 
 .placement-container {
@@ -340,18 +441,47 @@ onUnmounted(() => {
   margin-top: 30px;
 }
 
+.ship-list-container {
+  width: 250px;
+  padding: 15px;
+  background: #f5f5f5;
+  border-radius: 8px;
+}
+
+.ship-item {
+  padding: 10px;
+  margin-bottom: 10px;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.ship-item.selected {
+  border-color: #4CAF50;
+  background-color: #e8f5e9;
+}
+
+.ship-item.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ship-preview {
+  height: 15px;
+  margin-top: 5px;
+  background-color: #555;
+  border-radius: 3px;
+}
+
 .board-with-coordinates {
   display: flex;
   flex-direction: column;
 }
 
-.letters-row {
+.coordinates-row {
   display: flex;
   margin-left: 30px;
-}
-
-.board-row {
-  display: flex;
 }
 
 .coordinate-cell {
@@ -366,6 +496,10 @@ onUnmounted(() => {
 .letter, .number {
   font-weight: bold;
   color: #333;
+}
+
+.board-row {
+  display: flex;
 }
 
 .board-cell {
@@ -408,7 +542,6 @@ onUnmounted(() => {
   padding: 12px 24px;
   border-radius: 5px;
   cursor: pointer;
-  font-family: 'Schoolbell', cursive;
   font-size: 1.1em;
   transition: all 0.2s;
   border: none;
