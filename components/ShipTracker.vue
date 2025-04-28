@@ -42,11 +42,7 @@ const enemyShips = computed(() => {
   return sizes.map(size => {
     const total = props.opponent.ships.find(s => s.size === size)?.count || 0;
     const sunk = props.player.sunkShips.filter(s => s.length === size).length;
-    return {
-      size,
-      count: total,
-      sunk
-    };
+    return { size, count: total, sunk };
   });
 });
 
@@ -106,6 +102,11 @@ const sunkShips = computed(() => props.player.sunkShips || []);
 
 .sunk-icon {
   font-size: 1.2em;
+}
+
+.sunk-size {
+  color: #e74c3c;
+  font-weight: 500;
 }
 
 .no-ships {
